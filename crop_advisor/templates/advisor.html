@@ -1,0 +1,1249 @@
+{% extends "base.html" %}
+{% block title %}Crop Advisor{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* ── Mode toggle pills ───────────────────────────── */
+.mode-toggle {
+  display: inline-flex;
+  background: var(--gray-100);
+  border: 1.5px solid var(--gray-200);
+  border-radius: 999px;
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 1.75rem;
+}
+.mode-btn {
+  padding: .45rem 1.25rem;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: .88rem;
+  font-weight: 500;
+  color: var(--gray-600);
+  cursor: pointer;
+  transition: all .2s;
+  white-space: nowrap;
+}
+.mode-btn.active {
+  background: var(--green-700);
+  color: var(--white);
+  box-shadow: 0 1px 6px rgba(0,0,0,.15);
+}
+.mode-btn:not(.active):hover { background: var(--gray-200); }
+
+/* ── Soil type selector cards ────────────────────── */
+.soil-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .6rem;
+  margin-top: .35rem;
+}
+.soil-card {
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  padding: .7rem .5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all .2s;
+  background: var(--white);
+}
+.soil-card:hover { border-color: var(--green-400); background: var(--green-50); }
+.soil-card.selected {
+  border-color: var(--green-500);
+  background: var(--green-50);
+  box-shadow: 0 0 0 3px rgba(76,175,80,.15);
+}
+.soil-card-icon { font-size: 1.4rem; }
+.soil-card-name { font-size: .78rem; font-weight: 600; color: var(--gray-800); margin-top: .2rem; }
+.soil-card-hint { font-size: .7rem; color: var(--gray-600); margin-top: .1rem; }
+
+/* ── Rainfall selector ───────────────────────────── */
+.rain-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .6rem;
+  margin-top: .35rem;
+}
+.rain-btn {
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  padding: .6rem;
+  text-align: center;
+  cursor: pointer;
+  background: var(--white);
+  font-family: var(--font-body);
+  font-size: .82rem;
+  font-weight: 500;
+  color: var(--gray-700);
+  transition: all .2s;
+}
+.rain-btn:hover { border-color: var(--sky-500); background: var(--sky-100); }
+.rain-btn.selected {
+  border-color: var(--sky-500);
+  background: var(--sky-100);
+  color: #0277bd;
+  box-shadow: 0 0 0 3px rgba(41,182,246,.15);
+}
+
+/* ── Input quality bar ───────────────────────────── */
+.quality-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .6rem .85rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--gray-200);
+  background: var(--gray-50);
+  margin-top: .75rem;
+}
+.quality-dots { display: flex; gap: 5px; }
+.quality-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--gray-300);
+  transition: background .3s;
+}
+.quality-dot.filled-good    { background: var(--green-500); }
+.quality-dot.filled-ok      { background: var(--amber-500); }
+.quality-dot.filled-poor    { background: var(--red-500); }
+.quality-label {
+  font-size: .8rem;
+  font-weight: 600;
+}
+
+/* ── Warning chip ────────────────────────────────── */
+.warning-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  font-size: .78rem;
+  font-weight: 500;
+  padding: .25rem .65rem;
+  border-radius: 999px;
+  margin: .2rem .2rem 0 0;
+}
+
+/* ── Mapped values preview (Simple mode) ─────────── */
+.mapped-preview {
+  background: var(--green-50);
+  border: 1px solid var(--green-200);
+  border-radius: var(--radius-md);
+  padding: .75rem 1rem;
+  margin-top: .75rem;
+  display: none;
+}
+.mapped-preview.visible { display: block; }
+.mapped-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: .5rem;
+  margin-top: .5rem;
+}
+.mapped-item {
+  text-align: center;
+  background: var(--white);
+  border: 1px solid var(--green-200);
+  border-radius: var(--radius-sm);
+  padding: .4rem .3rem;
+}
+.mapped-val  { font-size: .95rem; font-weight: 700; color: var(--green-700); }
+.mapped-name { font-size: .68rem; color: var(--gray-600); margin-top: .1rem; }
+
+/* ── Quick-fill soil chips ───────────────────────── */
+.quick-fill-row {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+  margin-bottom: .75rem;
+}
+.qf-chip {
+  border: 1.5px solid var(--green-300);
+  background: var(--green-50);
+  color: var(--green-800);
+  font-size: .78rem;
+  font-weight: 500;
+  padding: .3rem .8rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: all .18s;
+}
+.qf-chip:hover { background: var(--green-200); border-color: var(--green-500); }
+
+/* ── Spinner override ────────────────────────────── */
+.loader { display: none; flex-direction: column; align-items: center; padding: 2.5rem; }
+.loader.active { display: flex; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-wrap">
+
+  <!-- Page header -->
+  <div class="page-header">
+    <h1>🔬 Crop Recommendation Advisor</h1>
+    <p>Choose your input mode, fill in your field conditions, and get AI-powered crop recommendations.</p>
+  </div>
+
+  <!-- ── MODE TOGGLE ─────────────────────────────────────────────────────── -->
+  <div class="mode-toggle" role="group" aria-label="Input mode">
+    <button class="mode-btn active" id="btn-simple"   onclick="setMode('simple')">
+      🌾 Simple Mode
+    </button>
+    <button class="mode-btn"        id="btn-advanced" onclick="setMode('advanced')">
+      🔬 Advanced Mode
+    </button>
+  </div>
+
+  <div class="grid-2">
+
+    <!-- ════════════════════════════════════════════════════
+         LEFT COLUMN — inputs
+    ═══════════════════════════════════════════════════════ -->
+    <div>
+
+      <!-- ╔══════════════════════════════╗
+           ║  SIMPLE MODE PANEL           ║
+           ╚══════════════════════════════╝ -->
+      <div id="simple-mode">
+
+        <div class="card mb-3">
+          <div class="card-header">
+            <h2>🌾 Farmer Input</h2>
+            <span class="badge badge-green">Simple</span>
+          </div>
+          <div class="card-body">
+
+            <!-- Location -->
+            <div class="form-group">
+              <label class="form-label">Your Location</label>
+              <div style="display:flex;gap:.6rem">
+                <input id="s-location" class="form-input" type="text"
+                       placeholder="City, Country (e.g. Pune, India)"
+                       autocomplete="off" style="flex:1">
+                <button class="btn btn-primary btn-sm" onclick="simpleFetchWeather()">
+                  ⚡ Get Weather
+                </button>
+              </div>
+              <div id="s-weather-status" class="text-muted"
+                   style="font-size:.82rem;margin-top:.4rem"></div>
+            </div>
+
+            <!-- Soil type picker -->
+            <div class="form-group">
+              <label class="form-label">Soil Type</label>
+              <div class="soil-grid">
+                <div class="soil-card" id="soil-sandy" onclick="selectSoil('sandy')">
+                  <div class="soil-card-icon">🏖️</div>
+                  <div class="soil-card-name">Sandy</div>
+                  <div class="soil-card-hint">Low nutrients, drains fast</div>
+                </div>
+                <div class="soil-card" id="soil-clay" onclick="selectSoil('clay')">
+                  <div class="soil-card-icon">🧱</div>
+                  <div class="soil-card-name">Clay</div>
+                  <div class="soil-card-hint">Rich, holds moisture</div>
+                </div>
+                <div class="soil-card" id="soil-loamy" onclick="selectSoil('loamy')">
+                  <div class="soil-card-icon">🌱</div>
+                  <div class="soil-card-name">Loamy</div>
+                  <div class="soil-card-hint">Balanced, ideal for most crops</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Rainfall level picker -->
+            <div class="form-group">
+              <label class="form-label">Rainfall Level</label>
+              <div class="rain-options">
+                <button class="rain-btn" id="rain-low"    onclick="selectRain('low')">
+                  ☀️ Low<br><span style="font-size:.7rem;font-weight:400">&lt; 60 mm</span>
+                </button>
+                <button class="rain-btn" id="rain-medium" onclick="selectRain('medium')">
+                  🌦️ Medium<br><span style="font-size:.7rem;font-weight:400">60–150 mm</span>
+                </button>
+                <button class="rain-btn" id="rain-high"   onclick="selectRain('high')">
+                  🌧️ High<br><span style="font-size:.7rem;font-weight:400">&gt; 150 mm</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Auto-mapped values preview -->
+            <div class="mapped-preview" id="mapped-preview">
+              <div style="font-size:.8rem;font-weight:600;color:var(--green-800)">
+                📊 Estimated values that will be sent to the model:
+              </div>
+              <div class="mapped-grid">
+                <div class="mapped-item"><div class="mapped-val" id="mp-N">—</div><div class="mapped-name">N kg/ha</div></div>
+                <div class="mapped-item"><div class="mapped-val" id="mp-P">—</div><div class="mapped-name">P kg/ha</div></div>
+                <div class="mapped-item"><div class="mapped-val" id="mp-K">—</div><div class="mapped-name">K kg/ha</div></div>
+                <div class="mapped-item"><div class="mapped-val" id="mp-ph">—</div><div class="mapped-name">Soil pH</div></div>
+                <div class="mapped-item"><div class="mapped-val" id="mp-T">—</div><div class="mapped-name">Temp °C</div></div>
+                <div class="mapped-item"><div class="mapped-val" id="mp-H">—</div><div class="mapped-name">Humidity %</div></div>
+                <div class="mapped-item"><div class="mapped-val" id="mp-R">—</div><div class="mapped-name">Rainfall mm</div></div>
+              </div>
+              <div style="font-size:.72rem;color:var(--gray-600);margin-top:.5rem">
+                ℹ️ These are representative values derived from your selections.
+                Switch to Advanced Mode to enter them manually.
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Simple mode submit -->
+        <div style="display:flex;gap:.75rem;margin-bottom:1.5rem">
+          <button class="btn btn-primary btn-lg" style="flex:1;justify-content:center"
+                  onclick="runSimplePrediction()">
+            🌱 Get Crop Recommendation
+          </button>
+          <button class="btn btn-lg"
+                  style="background:var(--gray-100);color:var(--gray-800);border:1.5px solid var(--gray-400)"
+                  onclick="resetForm()" title="Clear all inputs">
+            ↺ Reset
+          </button>
+        </div>
+
+      </div><!-- /simple-mode -->
+
+
+      <!-- ╔══════════════════════════════╗
+           ║  ADVANCED MODE PANEL         ║
+           ╚══════════════════════════════╝ -->
+      <div id="advanced-mode" style="display:none">
+
+        <!-- Weather card -->
+        <div class="card mb-3">
+          <div class="card-header">
+            <h2>🌍 Weather Data</h2>
+            <button class="btn btn-primary btn-sm" onclick="autoFetchWeather()">
+              ⚡ Auto-Fill from Location
+            </button>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label">Location</label>
+              <input id="weather-loc" class="form-input" type="text"
+                     placeholder="City, Country (e.g. Mumbai, India)"
+                     autocomplete="off">
+            </div>
+            <div id="weather-status" class="text-muted"
+                 style="font-size:.85rem;margin-bottom:.75rem"></div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Temperature (°C)</label>
+                <input id="temperature" class="form-input" type="number"
+                       min="-10" max="55" step="0.1"
+                       placeholder="e.g. 25" autocomplete="off"
+                       oninput="validateInputs(); checkQuality()">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Humidity (%)</label>
+                <input id="humidity" class="form-input" type="number"
+                       min="0" max="100" step="0.1"
+                       placeholder="e.g. 70" autocomplete="off"
+                       oninput="validateInputs(); checkQuality()">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Rainfall (mm/month)</label>
+              <input id="rainfall" class="form-input" type="number"
+                     min="0" max="500" step="0.1"
+                     placeholder="e.g. 100" autocomplete="off"
+                     oninput="validateInputs(); checkQuality()">
+            </div>
+            <!-- Inline warnings -->
+            <div id="warning-box"></div>
+          </div>
+        </div>
+
+        <!-- Soil card -->
+        <div class="card mb-3">
+          <div class="card-header">
+            <h2>🧪 Soil Nutrients</h2>
+          </div>
+          <div class="card-body">
+
+            <!-- Quick-fill chips -->
+            <div style="font-size:.8rem;font-weight:500;color:var(--gray-700);margin-bottom:.4rem">
+              Quick fill from soil type:
+            </div>
+            <div class="quick-fill-row">
+              <button class="qf-chip" onclick="quickFill('sandy')">🏖️ Sandy</button>
+              <button class="qf-chip" onclick="quickFill('clay')">🧱 Clay</button>
+              <button class="qf-chip" onclick="quickFill('loamy')">🌱 Loamy</button>
+              <button class="qf-chip" onclick="quickFill('alluvial')">💧 Alluvial</button>
+              <button class="qf-chip" onclick="quickFill('black')">⚫ Black</button>
+              <button class="qf-chip" onclick="quickFill('red')">🔴 Red</button>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Nitrogen — N (kg/ha)</label>
+                <input id="N" class="form-input" type="number"
+                       min="0" max="200" step="1"
+                       placeholder="e.g. 80" autocomplete="off"
+                       oninput="checkQuality()">
+                <div class="form-hint">Typical range: 0–200</div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Phosphorus — P (kg/ha)</label>
+                <input id="P" class="form-input" type="number"
+                       min="0" max="200" step="1"
+                       placeholder="e.g. 45" autocomplete="off"
+                       oninput="checkQuality()">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Potassium — K (kg/ha)</label>
+                <input id="K" class="form-input" type="number"
+                       min="0" max="200" step="1"
+                       placeholder="e.g. 40" autocomplete="off"
+                       oninput="checkQuality()">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Soil pH</label>
+                <input id="ph" class="form-input" type="number"
+                       min="0" max="14" step="0.1"
+                       placeholder="e.g. 6.5" autocomplete="off"
+                       oninput="validateInputs(); checkQuality()">
+                <div class="form-hint">0 = acidic · 7 = neutral · 14 = alkaline</div>
+              </div>
+            </div>
+
+            <!-- Input quality indicator -->
+            <div class="quality-bar-wrap" id="quality-bar-wrap">
+              <div class="quality-dots" id="quality-dots">
+                <div class="quality-dot" id="qd-0"></div>
+                <div class="quality-dot" id="qd-1"></div>
+                <div class="quality-dot" id="qd-2"></div>
+                <div class="quality-dot" id="qd-3"></div>
+                <div class="quality-dot" id="qd-4"></div>
+                <div class="quality-dot" id="qd-5"></div>
+                <div class="quality-dot" id="qd-6"></div>
+              </div>
+              <span class="quality-label" id="quality-label"
+                    style="color:var(--gray-400)">Fill all fields</span>
+              <span style="font-size:.75rem;color:var(--gray-500);margin-left:auto">
+                <span id="quality-count">0</span>/7 fields
+              </span>
+            </div>
+
+            <!-- Static hints -->
+            <div style="background:var(--green-50);border:1px solid var(--green-200);
+                        border-radius:var(--radius-md);padding:.6rem .85rem;
+                        font-size:.78rem;color:var(--green-800);margin-top:.75rem">
+              💡 Typical ranges — pH: 5.5–7.5 · Rainfall: 50–200 mm ·
+              Temperature: 15–35 °C · N/P/K: 20–120 kg/ha
+            </div>
+          </div>
+        </div>
+
+        <!-- Advanced mode submit -->
+        <div style="display:flex;gap:.75rem">
+          <button class="btn btn-primary btn-lg" style="flex:1;justify-content:center"
+                  onclick="runPrediction()">
+            🌾 Analyze &amp; Recommend Crops
+          </button>
+
+          <button class="btn btn-lg"
+                  style="background:var(--gray-100);color:var(--gray-800);border:1.5px solid var(--gray-400)"
+                  onclick="resetForm()" title="Clear all inputs and results">
+            ↺ Reset
+          </button>
+        </div>
+
+      </div><!-- /advanced-mode -->
+
+    </div><!-- /left column -->
+
+
+    <!-- ════════════════════════════════════════════════════
+         RIGHT COLUMN — results
+    ═══════════════════════════════════════════════════════ -->
+    <div>
+
+      <!-- Placeholder (shown on load and after reset) -->
+      <div id="results-placeholder" class="card" style="min-height:340px">
+        <div class="card-body flex-center"
+             style="flex-direction:column;gap:1rem;min-height:340px;text-align:center">
+          <div style="font-size:4rem">🌱</div>
+          <p style="color:var(--gray-600)">
+            Choose your mode, fill in your conditions,<br>
+            and click <strong>Analyze</strong> to see recommendations.
+          </p>
+          <div style="display:flex;gap:1rem;font-size:.82rem;color:var(--gray-500)">
+            <span>🌾 Simple — 3 inputs</span>
+            <span>·</span>
+            <span>🔬 Advanced — 7 inputs</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Spinner -->
+      <div id="results-loading" class="loader">
+        <div class="spinner"></div>
+        <p style="color:var(--gray-600);margin-top:.5rem">Analysing conditions…</p>
+      </div>
+
+      <!-- Results panel -->
+      <div id="results-wrap" style="display:none">
+
+        <!-- Mode badge + top crops -->
+        <div class="card mb-3">
+          <div class="card-header">
+            <h2>🏆 Top Crop Recommendations</h2>
+            <span class="badge" id="result-mode-badge"
+                  style="background:var(--green-100);color:var(--green-800)"></span>
+          </div>
+          <div class="card-body" id="crops-list"></div>
+          <div class="card-body" style="padding-top:0">
+            <canvas id="probChart" height="110"></canvas>
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="card">
+          <div class="card-body">
+            <div class="tabs">
+              <button class="tab-btn active" onclick="switchTab('plan', this)">📅 Smart Plan</button>
+              <button class="tab-btn"        onclick="switchTab('risk', this)">⚠️ Risk Alerts</button>
+              <button class="tab-btn"        onclick="switchTab('why',  this)">🔍 Why This Crop?</button>
+            </div>
+            <div id="tab-plan" class="tab-panel active"></div>
+            <div id="tab-risk" class="tab-panel"></div>
+            <div id="tab-why"  class="tab-panel"></div>
+          </div>
+        </div>
+
+      </div><!-- /results-wrap -->
+
+    </div><!-- /right column -->
+  </div><!-- /grid-2 -->
+</div><!-- /page-wrap -->
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+//  MICRO CLIMATE CROP ADVISOR — advisor.html JavaScript
+//  Sections:
+//    1. Soil mapping tables
+//    2. Mode switching
+//    3. Simple mode logic (soil select, rain select, weather fetch, predict)
+//    4. Advanced mode logic (quick-fill, weather fetch, validation, quality)
+//    5. Shared predict dispatcher
+//    6. Render results (crops, chart, tabs)
+//    7. Reset + DOMContentLoaded
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── 1. SOIL & RAINFALL MAPPING TABLES ────────────────────────────────────────
+// These translate the farmer's simple choices into realistic NPK/pH values
+// that the trained Random Forest model understands.
+
+const SOIL_MAP = {
+  //           N    P    K    ph
+  sandy:    { N: 38,  P: 28,  K: 28,  ph: 6.0 },
+  clay:     { N: 72,  P: 52,  K: 52,  ph: 7.4 },
+  loamy:    { N: 62,  P: 42,  K: 42,  ph: 6.5 },
+  alluvial: { N: 80,  P: 55,  K: 48,  ph: 7.0 },
+  black:    { N: 68,  P: 48,  K: 44,  ph: 7.8 },
+  red:      { N: 44,  P: 32,  K: 30,  ph: 6.2 },
+};
+
+const RAIN_MAP = {
+  low:    45,   // mm/month
+  medium: 105,
+  high:   185,
+};
+
+// State holders for simple mode
+let _selectedSoil = '';
+let _selectedRain = '';
+let _simpleWeather = { temperature: null, humidity: null }; // filled by weather fetch
+
+
+// ── 2. MODE SWITCHING ─────────────────────────────────────────────────────────
+function setMode(mode) {
+  const isSimple = mode === 'simple';
+  document.getElementById('simple-mode').style.display   = isSimple ? 'block' : 'none';
+  document.getElementById('advanced-mode').style.display = isSimple ? 'none'  : 'block';
+
+  document.getElementById('btn-simple').classList.toggle('active',   isSimple);
+  document.getElementById('btn-advanced').classList.toggle('active', !isSimple);
+
+  // Hide results when switching modes so stale results don't show
+  document.getElementById('results-placeholder').style.display = 'block';
+  document.getElementById('results-wrap').style.display        = 'none';
+}
+
+
+// ── 3. SIMPLE MODE ────────────────────────────────────────────────────────────
+
+function selectSoil(type) {
+  // Deselect all, then highlight chosen card
+  ['sandy','clay','loamy'].forEach(t => {
+    document.getElementById('soil-' + t).classList.remove('selected');
+  });
+  document.getElementById('soil-' + type).classList.add('selected');
+  _selectedSoil = type;
+  updateMappedPreview();
+}
+
+function selectRain(level) {
+  ['low','medium','high'].forEach(l => {
+    document.getElementById('rain-' + l).classList.remove('selected');
+  });
+  document.getElementById('rain-' + level).classList.add('selected');
+  _selectedRain = level;
+  updateMappedPreview();
+}
+
+// Show the "what will be sent" preview box whenever both soil and rain are chosen
+function updateMappedPreview() {
+  if (!_selectedSoil || !_selectedRain) return;
+  const sm = SOIL_MAP[_selectedSoil];
+  const rain = RAIN_MAP[_selectedRain];
+  const T = _simpleWeather.temperature !== null ? _simpleWeather.temperature : '—';
+  const H = _simpleWeather.humidity    !== null ? _simpleWeather.humidity    : '—';
+
+  document.getElementById('mp-N').textContent  = sm.N;
+  document.getElementById('mp-P').textContent  = sm.P;
+  document.getElementById('mp-K').textContent  = sm.K;
+  document.getElementById('mp-ph').textContent = sm.ph;
+  document.getElementById('mp-T').textContent  = T;
+  document.getElementById('mp-H').textContent  = H;
+  document.getElementById('mp-R').textContent  = rain;
+
+  document.getElementById('mapped-preview').classList.add('visible');
+}
+
+async function simpleFetchWeather() {
+  const loc = document.getElementById('s-location').value.trim();
+  const statusEl = document.getElementById('s-weather-status');
+  if (!loc) {
+    statusEl.textContent = '⚠️ Enter a location first.';
+    document.getElementById('s-location').focus();
+    return;
+  }
+  statusEl.textContent = '⏳ Fetching weather…';
+  _simpleWeather = { temperature: null, humidity: null };
+
+  try {
+    const res = await fetch('/api/weather', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({location: loc})
+    });
+    const d = await res.json();
+    if (d.current && !d.current.error) {
+      _simpleWeather.temperature = d.current.temperature;
+      _simpleWeather.humidity    = d.current.humidity;
+      statusEl.textContent =
+        `✅ ${d.current.city}, ${d.current.country} — ${d.current.temperature}°C, ${d.current.humidity}% humidity`;
+      updateMappedPreview();
+    } else {
+      statusEl.textContent = '⚠️ Could not fetch weather. Check location spelling.';
+    }
+  } catch (e) {
+    statusEl.textContent = '⚠️ Network error — is Flask running?';
+  }
+}
+
+async function runSimplePrediction() {
+  // Validate selections
+  if (!_selectedSoil) {
+    alert('Please select a soil type.');
+    return;
+  }
+  if (!_selectedRain) {
+    alert('Please select a rainfall level.');
+    return;
+  }
+
+  const sm   = SOIL_MAP[_selectedSoil];
+  const rain = RAIN_MAP[_selectedRain];
+
+  // Use live weather if fetched, otherwise use sensible defaults
+  const temperature = _simpleWeather.temperature !== null ? _simpleWeather.temperature : 26;
+  const humidity    = _simpleWeather.humidity    !== null ? _simpleWeather.humidity    : 65;
+
+  const payload = {
+    N:           sm.N,
+    P:           sm.P,
+    K:           sm.K,
+    ph:          sm.ph,
+    temperature: temperature,
+    humidity:    humidity,
+    rainfall:    rain,
+  };
+
+  await runPredictionWithPayload(payload, 'Simple Mode');
+}
+
+
+// ── 4. ADVANCED MODE ──────────────────────────────────────────────────────────
+
+// One-click quick fill from soil type (no alert/prompt — chips replace that)
+function quickFill(soilType) {
+  const sm = SOIL_MAP[soilType];
+  if (!sm) return;
+  document.getElementById('N').value  = sm.N;
+  document.getElementById('P').value  = sm.P;
+  document.getElementById('K').value  = sm.K;
+  document.getElementById('ph').value = sm.ph;
+  checkQuality();
+
+  // Briefly flash the inputs to confirm fill
+  ['N','P','K','ph'].forEach(id => {
+    const el = document.getElementById(id);
+    el.style.transition = 'background .3s';
+    el.style.background = '#d1fae5';
+    setTimeout(() => { el.style.background = ''; }, 700);
+  });
+}
+
+async function autoFetchWeather() {
+  const loc = document.getElementById('weather-loc').value.trim();
+  const statusEl = document.getElementById('weather-status');
+  if (!loc) {
+    statusEl.textContent = '⚠️ Enter a location first.';
+    document.getElementById('weather-loc').focus();
+    return;
+  }
+  statusEl.textContent = '⏳ Fetching live weather…';
+  // Clear fields BEFORE the fetch so partial failure leaves them blank
+  ['temperature','humidity','rainfall'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+
+  try {
+    const res = await fetch('/api/weather', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({location: loc})
+    });
+    const d = await res.json();
+    if (d.current && !d.current.error) {
+      document.getElementById('temperature').value = d.current.temperature;
+      document.getElementById('humidity').value    = d.current.humidity;
+      document.getElementById('rainfall').value    = d.current.rainfall;
+      statusEl.textContent =
+        `✅ ${d.current.city}, ${d.current.country} — ${d.current.description}`;
+      checkQuality();
+    } else {
+      statusEl.textContent = '⚠️ Could not fetch weather. Check your API key or location.';
+    }
+  } catch (e) {
+    statusEl.textContent = '⚠️ Network error — is Flask running?';
+  }
+}
+
+// Per-field range warnings shown as chips below the rainfall input
+function validateInputs() {
+  const warnings = [];
+  const rainfall    = parseFloat(document.getElementById('rainfall').value);
+  const ph          = parseFloat(document.getElementById('ph').value);
+  const temperature = parseFloat(document.getElementById('temperature').value);
+  const humidity    = parseFloat(document.getElementById('humidity').value);
+
+  if (!isNaN(rainfall)    && rainfall    > 400)  warnings.push('Rainfall unusually high (> 400 mm)');
+  if (!isNaN(rainfall)    && rainfall    < 0)    warnings.push('Rainfall cannot be negative');
+  if (!isNaN(ph)          && (ph < 3 || ph > 9)) warnings.push('Soil pH outside realistic range (3–9)');
+  if (!isNaN(temperature) && temperature > 50)   warnings.push('Temperature extremely high (> 50°C)');
+  if (!isNaN(temperature) && temperature < -5)   warnings.push('Temperature extremely low (< -5°C)');
+  if (!isNaN(humidity)    && humidity    > 100)  warnings.push('Humidity cannot exceed 100%');
+
+  const box = document.getElementById('warning-box');
+  box.innerHTML = warnings.map(w =>
+    `<span class="warning-chip">⚠️ ${w}</span>`
+  ).join('');
+}
+
+// 7-dot quality indicator
+function checkQuality() {
+  const ids = ['N','P','K','ph','temperature','humidity','rainfall'];
+  let filled = 0;
+  ids.forEach(id => {
+    if (document.getElementById(id) &&
+        document.getElementById(id).value.trim() !== '') filled++;
+  });
+
+  // Update dots
+  const dotClass = filled >= 6 ? 'filled-good' : filled >= 4 ? 'filled-ok' : 'filled-poor';
+  for (let i = 0; i < 7; i++) {
+    const dot = document.getElementById('qd-' + i);
+    dot.className = 'quality-dot' + (i < filled ? ' ' + dotClass : '');
+  }
+
+  // Label
+  const label     = filled >= 6 ? '✅ Good'  : filled >= 4 ? '⚠️ Uncertain' : '❌ Poor';
+  const color     = filled >= 6 ? 'var(--green-700)' : filled >= 4 ? 'var(--amber-700)' : 'var(--red-500)';
+  const labelEl   = document.getElementById('quality-label');
+  labelEl.textContent = 'Input quality: ' + label;
+  labelEl.style.color = color;
+  document.getElementById('quality-count').textContent = filled;
+}
+
+async function runPrediction() {
+  // Validate every field individually
+  const fields = [
+    {id: 'N',           label: 'Nitrogen (N)'},
+    {id: 'P',           label: 'Phosphorus (P)'},
+    {id: 'K',           label: 'Potassium (K)'},
+    {id: 'ph',          label: 'Soil pH'},
+    {id: 'temperature', label: 'Temperature'},
+    {id: 'humidity',    label: 'Humidity'},
+    {id: 'rainfall',    label: 'Rainfall'},
+  ];
+  const payload = {};
+  for (const {id, label} of fields) {
+    const raw = document.getElementById(id).value.trim();
+    if (raw === '' || isNaN(Number(raw))) {
+      alert(`Please enter a valid number for: ${label}`);
+      document.getElementById(id).focus();
+      return;
+    }
+    payload[id] = Number(raw);
+  }
+  await runPredictionWithPayload(payload, 'Advanced Mode');
+}
+
+
+// ── 5. SHARED PREDICT DISPATCHER ─────────────────────────────────────────────
+let probChart = null;
+let _lastMode = '';
+
+async function runPredictionWithPayload(payload, modeName) {
+  _lastMode = modeName;
+
+  document.getElementById('results-placeholder').style.display = 'none';
+  document.getElementById('results-wrap').style.display        = 'none';
+  document.getElementById('results-loading').classList.add('active');
+  
+  try {
+    const res  = await fetch('/api/predict', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    document.getElementById('results-loading').classList.remove('active');
+    if (data.error) {
+      alert('Server error: ' + data.error);
+      document.getElementById('results-placeholder').style.display = 'block';
+      return;
+    }
+    renderResults(data, payload, modeName);
+  } catch (e) {
+    document.getElementById('results-loading').classList.remove('active');
+    document.getElementById('results-placeholder').style.display = 'block';
+    alert('Network error — is Flask running?');
+  }
+  
+}
+
+
+// ── 6. RENDER RESULTS ─────────────────────────────────────────────────────────
+function renderResults(data, inputs, modeName) {
+  document.getElementById('results-wrap').style.display = 'block';
+  document.getElementById('result-mode-badge').textContent = modeName;
+
+  // Show forecast banner if present
+  const existingBanner = document.getElementById('forecast-banner');
+  if (existingBanner) existingBanner.remove();
+  if (data._banner) {
+    const banner = document.createElement('div');
+    banner.id = 'forecast-banner';
+    banner.style.cssText = 'padding:.6rem 1rem;background:#e0f2fe;border:1px solid #7dd3fc;border-radius:8px;font-size:.85rem;color:#0277bd;margin-bottom:.75rem';
+    banner.textContent = data._banner;
+    document.getElementById('results-wrap').prepend(banner);
+  }
+  // ── Crop result cards ──
+  document.getElementById('crops-list').innerHTML =
+    data.predictions.map(p => {
+      const rankClass = p.rank === 1 ? '' : p.rank === 2 ? 'rank-2' : 'rank-3';
+      return `
+        <div class="crop-result">
+          <div class="crop-rank ${rankClass}">${p.rank}</div>
+          <div style="flex:1">
+            <div class="crop-name">${p.crop}</div>
+            <div class="crop-prob">Confidence: ${p.probability}%</div>
+          </div>
+          <div style="width:130px">
+            <div class="prob-bar">
+              <div class="prob-fill" style="width:${p.probability}%"></div>
+            </div>
+            <div style="font-size:.75rem;color:var(--gray-600);text-align:right;margin-top:.2rem">
+              ${p.probability}%
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+
+  // ── Horizontal bar chart ──
+  if (probChart) probChart.destroy();
+  probChart = new Chart(document.getElementById('probChart'), {
+    type: 'bar',
+    data: {
+      labels:   data.predictions.map(p => p.crop),
+      datasets: [{
+        label: 'Confidence %',
+        data:  data.predictions.map(p => p.probability),
+        backgroundColor: ['#4caf50', '#ffa726', '#bcaaa4'],
+        borderRadius: 8,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales:  { x: { max: 100, ticks: { callback: v => v + '%' } } }
+    }
+  });
+
+  // ── Smart Plan tab ──
+  const plan = data.plan;
+  document.getElementById('tab-plan').innerHTML = `
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-date">Sowing Period</div>
+        <div class="timeline-title">🌱 ${plan.sow_period}</div>
+        <div class="timeline-body">Best window to plant ${plan.crop} seeds.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-date">Growing Phase (~${plan.duration_days} days)</div>
+        <div class="timeline-title">💧 Irrigation: ${plan.irrigation}</div>
+        <div class="timeline-body">Monitor moisture and inspect for pests weekly.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-date">Harvest Period</div>
+        <div class="timeline-title">🌾 ${plan.harvest_period}</div>
+        <div class="timeline-body">
+          Estimated harvest around <strong>${plan.harvest_estimated}</strong>.
+        </div>
+      </div>
+    </div>
+    <div class="mt-3">
+      <div class="section-title">Farming Tips</div>
+      <ul style="padding-left:1.2rem">
+        ${plan.tips.map(t =>
+          `<li style="font-size:.875rem;color:var(--gray-700);margin-bottom:.35rem">${t}</li>`
+        ).join('')}
+      </ul>
+    </div>`;
+
+  // ── Risk Alerts tab ──
+  document.getElementById('tab-risk').innerHTML =
+    data.risks.map(r => `
+      <div class="risk-card risk-${r.severity.toLowerCase()}">
+        <div class="risk-title">
+          ${r.icon} ${r.type}
+          <span class="badge badge-${r.severity === 'High' ? 'red' : r.severity === 'Medium' ? 'amber' : 'green'}"
+                style="margin-left:.5rem">${r.severity}</span>
+        </div>
+        <div class="risk-desc">${r.description}</div>
+        <ul class="risk-actions">
+          ${r.actions.map(a => `<li>${a}</li>`).join('')}
+        </ul>
+      </div>`).join('');
+
+  // ── Why This Crop? tab ──
+  // All 3 crops with confidence labels + reasons + borderline warnings
+  const topCrop = data.predictions[0].crop;
+  const topPred = data.predictions[0];
+
+  // Derive confidence label from probability score
+  function confidenceLabel(prob) {
+    if (prob >= 60)  return { text: 'Highly Recommended', color: 'var(--green-700)' };
+    if (prob >= 30)  return { text: 'Suitable',           color: '#d97706' };
+    return                  { text: 'Possible',           color: '#dc2626' };
+  }
+
+  const allCropsHtml = data.predictions.map(p => {
+    const cl = confidenceLabel(p.probability);
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;
+                  padding:.6rem .85rem;border-radius:8px;
+                  background:var(--gray-50);border:1px solid var(--gray-200);
+                  margin-bottom:.5rem">
+        <span style="font-weight:600;font-size:.9rem">${p.rank}. ${p.crop}</span>
+        <span style="font-size:.8rem;font-weight:600;color:${cl.color}">
+          ${cl.text} &nbsp;(${p.probability}%)
+        </span>
+      </div>`;
+  }).join('');
+
+  // Build condition-based reasons from the inputs we sent
+  const reasons = buildReasons(inputs, topCrop);
+  const warnings = buildBorderlineWarnings(inputs);
+
+  document.getElementById('tab-why').innerHTML = `
+    <div style="margin-bottom:1rem">${allCropsHtml}</div>
+    <p style="margin-bottom:.75rem;font-size:.875rem">
+      Why <strong>${topCrop}</strong> ranked #1 for your conditions:
+    </p>
+    <ul style="padding-left:1.1rem;margin-bottom:.75rem">
+      ${reasons.map(r =>
+        `<li style="margin-bottom:.4rem;color:var(--green-800);font-size:.875rem">${r}</li>`
+      ).join('')}
+    </ul>
+    ${warnings.length ? `
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;
+                  padding:.75rem 1rem;margin-bottom:.75rem">
+        <div style="font-weight:600;color:#92400e;margin-bottom:.4rem">
+          ⚠️ Borderline conditions to monitor
+        </div>
+        <ul style="padding-left:1.1rem;margin:0">
+          ${warnings.map(w =>
+            `<li style="font-size:.82rem;color:#92400e;margin-bottom:.3rem">${w}</li>`
+          ).join('')}
+        </ul>
+      </div>` : ''}
+    <div style="margin-top:.75rem">
+      <div class="section-title">Input summary</div>
+      <div class="grid-2" style="margin-top:.5rem">
+        <div class="metric-card"><div class="metric-icon">🌡️</div>
+          <div class="metric-value">${inputs.temperature}°C</div>
+          <div class="metric-label">Temperature</div></div>
+        <div class="metric-card"><div class="metric-icon">💧</div>
+          <div class="metric-value">${inputs.humidity}%</div>
+          <div class="metric-label">Humidity</div></div>
+        <div class="metric-card"><div class="metric-icon">🌧️</div>
+          <div class="metric-value">${inputs.rainfall} mm</div>
+          <div class="metric-label">Rainfall</div></div>
+        <div class="metric-card"><div class="metric-icon">🧪</div>
+          <div class="metric-value">${inputs.ph}</div>
+          <div class="metric-label">Soil pH</div></div>
+        <div class="metric-card"><div class="metric-icon">🌿</div>
+          <div class="metric-value">${inputs.N} kg/ha</div>
+          <div class="metric-label">Nitrogen</div></div>
+        <div class="metric-card"><div class="metric-icon">🪨</div>
+          <div class="metric-value">${inputs.P} kg/ha</div>
+          <div class="metric-label">Phosphorus</div></div>
+      </div>
+    </div>
+    <p class="text-muted" style="font-size:.75rem;margin-top:.75rem">
+      Model: Random Forest · 2,300 training samples · 23 crop types · 7 features
+      · Input mode: ${modeName}
+    </p>`;
+    appendFeedbackWidget(data);
+}
+
+// Generate human-readable reasons from input values
+function buildReasons(inputs, crop) {
+  const reasons = [];
+  if (inputs.temperature >= 18 && inputs.temperature <= 32)
+    reasons.push(`✅ Temperature (${inputs.temperature}°C) is in the optimal growing range`);
+  if (inputs.humidity >= 50 && inputs.humidity <= 85)
+    reasons.push(`✅ Humidity (${inputs.humidity}%) supports healthy crop development`);
+  if (inputs.rainfall >= 50 && inputs.rainfall <= 200)
+    reasons.push(`✅ Rainfall (${inputs.rainfall} mm) is adequate for most field crops`);
+  if (inputs.ph >= 5.5 && inputs.ph <= 7.5)
+    reasons.push(`✅ Soil pH (${inputs.ph}) allows efficient nutrient absorption`);
+  if (inputs.N >= 40)
+    reasons.push(`✅ Nitrogen level (${inputs.N} kg/ha) supports leaf and stem growth`);
+  if (reasons.length === 0)
+    reasons.push(`The model scored ${crop} highest across all 7 input parameters combined.`);
+  return reasons;
+}
+
+// Flag values near the edge of their safe range
+function buildBorderlineWarnings(inputs) {
+  const w = [];
+  if (inputs.rainfall < 60)
+    w.push(`Low rainfall (${inputs.rainfall} mm) — ensure irrigation is available`);
+  if (inputs.rainfall > 180)
+    w.push(`High rainfall (${inputs.rainfall} mm) — check drainage before sowing`);
+  if (inputs.ph < 5.5)
+    w.push(`Acidic soil (pH ${inputs.ph}) may limit phosphorus uptake — consider liming`);
+  if (inputs.ph > 7.8)
+    w.push(`Alkaline soil (pH ${inputs.ph}) may cause micronutrient deficiency`);
+  if (inputs.temperature > 35)
+    w.push(`High temperature (${inputs.temperature}°C) — risk of heat stress at flowering`);
+  return w;
+}
+
+
+// ── 7. TAB SWITCHER ───────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+
+// ── 8. RESET ──────────────────────────────────────────────────────────────────
+function resetForm() {
+  // Advanced mode fields
+  ['weather-loc','temperature','humidity','rainfall','N','P','K','ph'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+
+  // Simple mode state
+  _selectedSoil  = '';
+  _selectedRain  = '';
+  _simpleWeather = { temperature: null, humidity: null };
+  ['sandy','clay','loamy'].forEach(t => {
+    document.getElementById('soil-' + t).classList.remove('selected');
+  });
+  ['low','medium','high'].forEach(l => {
+    document.getElementById('rain-' + l).classList.remove('selected');
+  });
+  document.getElementById('mapped-preview').classList.remove('visible');
+  document.getElementById('s-weather-status').textContent = '';
+
+  // Advanced mode status / warnings
+  const ws = document.getElementById('weather-status');
+  if (ws) ws.textContent = '';
+  const wb = document.getElementById('warning-box');
+  if (wb) wb.innerHTML = '';
+  checkQuality();
+
+  // Results panel
+  document.getElementById('results-placeholder').style.display = 'block';
+  document.getElementById('results-wrap').style.display        = 'none';
+  document.getElementById('results-loading').classList.remove('active');
+
+  if (probChart) { probChart.destroy(); probChart = null; }
+}
+
+// Start clean on every page load
+document.addEventListener('DOMContentLoaded', () => {
+  resetForm();
+  setMode('simple');   // default to Simple mode
+});
+// ── FORECAST-BASED PREDICTION ─────────────────────────────────────────────
+async function runForecastPrediction() {
+  const isAdv = document.getElementById('btn-advanced').classList.contains('active');
+  const loc   = isAdv
+    ? document.getElementById('weather-loc').value.trim()
+    : document.getElementById('s-location').value.trim();
+
+  const soilPayload = isAdv ? {
+    N:  parseFloat(document.getElementById('N').value),
+    P:  parseFloat(document.getElementById('P').value),
+    K:  parseFloat(document.getElementById('K').value),
+    ph: parseFloat(document.getElementById('ph').value),
+  } : (() => {
+    if (!_selectedSoil) return { N: NaN, P: NaN, K: NaN, ph: NaN };
+    const sm = SOIL_MAP[_selectedSoil];
+    return { N: sm.N, P: sm.P, K: sm.K, ph: sm.ph };
+  })();
+
+  // Validate BEFORE touching the spinner
+  if (!loc) {
+    alert('Please enter your location first for forecast prediction.');
+    return;
+  }
+  if (Object.values(soilPayload).some(v => isNaN(v))) {
+    alert('Please fill in all soil parameters (N, P, K, pH).');
+    return;
+  }
+
+  // Show spinner
+  document.getElementById('results-placeholder').style.display = 'none';
+  document.getElementById('results-wrap').style.display        = 'none';
+  document.getElementById('results-loading').classList.add('active');
+
+  try {
+    const res  = await fetch('/api/predict-forecast', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ ...soilPayload, location: loc })
+    });
+    const data = await res.json();
+    if (data.error) {
+      alert('Error: ' + data.error);
+      document.getElementById('results-placeholder').style.display = 'block';
+      return;
+    }
+    // Inject a banner noting forecast was used
+    data._banner = `📡 Prediction based on averaged ${data.forecast_days}-day weather forecast`;
+    renderResults(data, soilPayload, 'Forecast');
+  } catch (e) {
+    alert('Forecast prediction failed: ' + e.message);
+    document.getElementById('results-placeholder').style.display = 'block';
+  } finally {
+    document.getElementById('results-loading').classList.remove('active');
+  }
+}
+
+
+// ── FEEDBACK WIDGET ───────────────────────────────────────────────────────────
+// Call this at the END of your existing renderResults() function:
+// appendFeedbackWidget(data)
+function appendFeedbackWidget(data) {
+  const existing = document.getElementById('feedback-widget');
+  if (existing) existing.remove();
+
+  const widget = document.createElement('div');
+  widget.id = 'feedback-widget';
+  widget.style.cssText = 'margin-top:1.25rem;padding:1rem 1.25rem;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px';
+  widget.innerHTML = `
+    <div style="font-weight:600;color:var(--green-800);margin-bottom:.6rem">
+      📝 Did you plant this crop? Share your outcome
+    </div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+      <select id="fb-crop" style="padding:.4rem .7rem;border-radius:6px;border:1px solid #d1d5db;font-size:.85rem">
+        <option value="">-- Crop I actually planted --</option>
+        ${(data.predictions||[]).map(p=>`<option value="${p.crop}">${p.crop}</option>`).join('')}
+        <option value="other">Other crop</option>
+      </select>
+      <div style="display:flex;gap:4px" id="star-row">
+        ${[1,2,3,4,5].map(i=>`
+          <span data-star="${i}" onclick="setStar(${i})"
+                style="font-size:1.4rem;cursor:pointer;opacity:.4;transition:.15s"
+                title="${i} star${i>1?'s':''}">⭐</span>
+        `).join('')}
+      </div>
+      <input id="fb-comment" placeholder="Optional comment…"
+             style="flex:1;min-width:160px;padding:.4rem .7rem;border-radius:6px;border:1px solid #d1d5db;font-size:.85rem">
+      <button onclick="submitFeedback()"
+              style="padding:.4rem 1rem;background:var(--green-600);color:#fff;border:none;border-radius:6px;font-size:.85rem;cursor:pointer">
+        Submit
+      </button>
+    </div>
+    <div id="fb-status" style="font-size:.8rem;margin-top:.4rem;color:var(--green-700)"></div>`;
+  document.getElementById('results-wrap').appendChild(widget);
+}
+
+let _fbStar = 3;
+function setStar(n) {
+  _fbStar = n;
+  document.querySelectorAll('#star-row [data-star]').forEach(s => {
+    s.style.opacity = parseInt(s.dataset.star) <= n ? '1' : '.35';
+  });
+}
+
+async function submitFeedback() {
+  const crop    = document.getElementById('fb-crop').value;
+  const comment = document.getElementById('fb-comment').value.trim();
+  if (!crop) { document.getElementById('fb-status').textContent = '⚠️ Please select a crop.'; return; }
+  const res = await fetch('/api/feedback', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ crop_planted: crop, rating: _fbStar, comment })
+  });
+  const d = await res.json();
+  document.getElementById('fb-status').textContent =
+    d.status === 'ok' ? '✅ Feedback saved! Thank you.' : '❌ Could not save.';
+  document.getElementById('feedback-widget').querySelector('button').disabled = true;
+}
+
+
+</script>
+{% endblock %}
+

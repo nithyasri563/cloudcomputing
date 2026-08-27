@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}Micro Climate Crop Advisor{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<!-- ── Navigation ── -->
+<nav class="navbar">
+  <a class="nav-brand" href="{{ url_for('index') }}">
+    <span class="nav-icon">🌾</span>
+    <span>CropAdvisor</span>
+  </a>
+  {% if session.get('user_id') %}
+  <ul class="nav-links">
+    <li><a href="{{ url_for('dashboard') }}" {% if request.endpoint=='dashboard' %}class="active"{% endif %}>Dashboard</a></li>
+    <li><a href="{{ url_for('advisor') }}"   {% if request.endpoint=='advisor'   %}class="active"{% endif %}>Advisor</a></li>
+    <li><a href="{{ url_for('history') }}"   {% if request.endpoint=='history'   %}class="active"{% endif %}>History</a></li>
+    <li><a href="{{ url_for('feedback_page') }}"
+       {% if request.endpoint=='feedback_page' %}class="active"{% endif %}>Feedback</a></li>
+  </ul>
+  <div class="nav-right">
+    <span class="nav-user">👤 {{ session.get('user_name','') }}</span>
+    <a href="{{ url_for('logout') }}" class="btn btn-outline btn-sm">Logout</a>
+  </div>
+  {% else %}
+  <div class="nav-right">
+    <a href="{{ url_for('login') }}"    class="btn btn-outline btn-sm">Login</a>
+    <a href="{{ url_for('register') }}" class="btn btn-primary btn-sm">Get Started</a>
+  </div>
+  {% endif %}
+</nav>
+
+<!-- ── Flash messages ── -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="flash-container">
+    {% for cat, msg in messages %}
+    <div class="flash flash-{{ cat }}">{{ msg }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endwith %}
+
+<!-- ── Page content ── -->
+{% block content %}{% endblock %}
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

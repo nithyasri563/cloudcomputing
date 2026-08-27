@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}My Feedback — Crop Advisor{% endblock %}
+{% block content %}
+<div class="page-wrap">
+  <div class="page-header">
+    <h1>📝 My Feedback</h1>
+    <p>Outcomes you reported after following the advisor's recommendations.</p>
+  </div>
+
+  {% if feedbacks %}
+  <div class="card">
+    <div class="card-body" style="padding:0;overflow-x:auto">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th><th>Crop Planted</th><th>Rating</th>
+            <th>Comment</th><th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for fb in feedbacks %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td><strong>{{ fb.crop_planted or '—' }}</strong></td>
+          <td>{{ '⭐' * (fb.rating or 0) }}</td>
+          <td class="text-muted">{{ fb.comment or '—' }}</td>
+          <td class="text-muted">{{ fb.submitted_at.strftime('%d %b %Y') }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="card">
+    <div class="card-body text-center" style="padding:3rem">
+      <div style="font-size:3rem;margin-bottom:1rem">📭</div>
+      <h3 style="font-family:var(--font-display);color:var(--green-800)">No feedback yet</h3>
+      <p class="text-muted">After getting a recommendation, use the feedback widget to record what you planted.</p>
+      <a href="{{ url_for('advisor') }}" class="btn btn-primary mt-2">Go to Advisor →</a>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

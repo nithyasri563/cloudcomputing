@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Micro Climate Crop Advisor{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-badge">🤖 AI-Powered Agricultural Intelligence</div>
+    <h1>Smart Farming Starts with <span>Better Decisions</span></h1>
+    <p>Our ML-powered platform analyzes soil nutrients, real-time weather data, and historical patterns to recommend the perfect crops for your land — and keep you one step ahead of risks.</p>
+    <div class="hero-btns">
+      <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg">🌱 Start Free</a>
+      <a href="{{ url_for('login') }}"    class="btn btn-outline btn-lg">Login</a>
+    </div>
+    <div class="hero-features">
+      <div class="hero-feat"><span class="hero-feat-icon">🌾</span> 22+ Crop Types</div>
+      <div class="hero-feat"><span class="hero-feat-icon">🌦️</span> Live Weather Data</div>
+      <div class="hero-feat"><span class="hero-feat-icon">⚠️</span> Risk Alerts</div>
+      <div class="hero-feat"><span class="hero-feat-icon">📅</span> Smart Planning</div>
+    </div>
+  </div>
+</section>
+
+<div class="stats-bar">
+  <div class="stat-item"><div class="stat-value">22</div><div class="stat-label">Crop Types</div></div>
+  <div class="stat-item"><div class="stat-value">7</div><div class="stat-label">Input Parameters</div></div>
+  <div class="stat-item"><div class="stat-value">ML</div><div class="stat-label">Random Forest</div></div>
+  <div class="stat-item"><div class="stat-value">Live</div><div class="stat-label">Weather API</div></div>
+  <div class="stat-item"><div class="stat-value">Free</div><div class="stat-label">To Use</div></div>
+</div>
+
+<div class="page-wrap">
+  <div class="grid-3 mt-4">
+    <div class="card card-green">
+      <div class="card-body">
+        <div style="font-size:2rem;margin-bottom:.75rem">🌱</div>
+        <h3 style="font-family:var(--font-display);color:var(--green-800);margin-bottom:.5rem">Crop Recommendation</h3>
+        <p class="text-muted">Enter your soil NPK values, pH, and local weather to get the top 3 crop recommendations with confidence scores.</p>
+      </div>
+    </div>
+    <div class="card card-sky">
+      <div class="card-body">
+        <div style="font-size:2rem;margin-bottom:.75rem">🌦️</div>
+        <h3 style="font-family:var(--font-display);color:var(--green-800);margin-bottom:.5rem">Real-Time Weather</h3>
+        <p class="text-muted">Automatically fetch live temperature, humidity, and rainfall data for your location to power accurate predictions.</p>
+      </div>
+    </div>
+    <div class="card card-amber">
+      <div class="card-body">
+        <div style="font-size:2rem;margin-bottom:.75rem">⚠️</div>
+        <h3 style="font-family:var(--font-display);color:var(--green-800);margin-bottom:.5rem">Risk Mitigation</h3>
+        <p class="text-muted">Detect drought, flood, heat stress, and fungal risks before they hit — with actionable advice to protect your crop.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

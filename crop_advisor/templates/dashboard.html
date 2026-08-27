@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Crop Advisor{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-wrap">
+  <div class="page-header">
+    <h1>Good day, {{ user.name }} 👋</h1>
+    <p>Here's an overview of your farm intelligence dashboard.</p>
+  </div>
+
+  <!-- Location update row -->
+  <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap">
+    <!--
+      FIX: value= is populated server-side from the User DB record (not from
+      Flask session). autocomplete="off" stops the browser from re-filling a
+      previously typed city after logout/login.
+    -->
+    <input id="loc-input" class="form-input" type="text"
+           style="max-width:280px"
+           placeholder="Your location (City, Country)"
+           value="{{ user.location or '' }}"
+           autocomplete="off">
+    <button class="btn btn-primary" onclick="updateLocation()">
+      📍 Update &amp; Fetch Weather
+    </button>
+    <span id="loc-status" class="text-muted"></span>
+  </div>
+
+  <!-- Weather panel -->
+  <div class="card mb-3">
+    <div class="card-header">
+      <h2>🌦️ Current Weather</h2>
+      <button class="btn btn-outline"
+              style="color:var(--green-700);border-color:var(--green-300)"
+              onclick="fetchWeather()">Refresh</button>
+    </div>
+    <div class="card-body">
+      <div id="weather-loading" class="loader active">
+        <div class="spinner"></div><p>Fetching live weather data…</p>
+      </div>
+      <div id="weather-data" style="display:none">
+        <div class="weather-main">
+          <img id="w-icon" src="" alt="" style="width:64px;height:64px">
+          <div>
+            <div class="weather-temp" id="w-temp">--°C</div>
+            <div class="weather-city" id="w-city">--</div>
+            <div class="weather-desc" id="w-desc">--</div>
+          </div>
+        </div>
+        <div class="weather-stats">
+          <div class="w-stat">
+            <div class="w-stat-icon">💧</div>
+            <div class="w-stat-val" id="w-hum">--%</div>
+            <div class="w-stat-label">Humidity</div>
+          </div>
+          <div class="w-stat">
+            <div class="w-stat-icon">🌧️</div>
+            <div class="w-stat-val" id="w-rain">--mm</div>
+            <div class="w-stat-label">Rainfall</div>
+          </div>
+          <div class="w-stat">
+            <div class="w-stat-icon">🌬️</div>
+            <div class="w-stat-val" id="w-wind">--m/s</div>
+            <div class="w-stat-label">Wind</div>
+          </div>
+        </div>
+      </div>
+      <div id="weather-error" style="display:none" class="text-muted">
+        ⚠️ Could not fetch weather. Check your API key or location.
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <!-- 5-day forecast chart -->
+    <div class="card">
+      <div class="card-header"><h2>📈 5-Day Temperature Forecast</h2></div>
+      <div class="card-body">
+        <canvas id="forecastChart" height="180"></canvas>
+        <div id="forecast-empty" class="text-muted text-center mt-2" style="display:none">
+          No forecast data available
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent predictions -->
+    <div class="card">
+      <div class="card-header">
+        <h2>🌾 Recent Predictions</h2>
+        <a href="{{ url_for('advisor') }}" class="btn btn-primary btn-sm">+ New</a>
+      </div>
+      <div class="card-body">
+        {% if predictions %}
+        <table class="data-table">
+          <thead>
+            <tr><th>Crop</th><th>Confidence</th><th>Date</th></tr>
+          </thead>
+          <tbody>
+          {% for p in predictions %}
+          <tr>
+            <td><strong>{{ p.crop }}</strong></td>
+            <td><span class="badge badge-green">{{ p.probability }}%</span></td>
+            <td class="text-muted">{{ p.predicted_at.strftime('%d %b %Y') }}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-muted text-center" style="padding:2rem">
+          No predictions yet.
+          <a href="{{ url_for('advisor') }}" style="color:var(--green-600)">
+            Run your first analysis →
+          </a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick action cards -->
+  <div class="grid-3 mt-3">
+    <a href="{{ url_for('advisor') }}" class="card"
+       style="text-decoration:none;transition:transform .2s"
+       onmouseover="this.style.transform='translateY(-3px)'"
+       onmouseout="this.style.transform=''">
+      <div class="card-body text-center">
+        <div style="font-size:2.5rem">🔬</div>
+        <h3 style="margin:.75rem 0 .25rem;font-family:var(--font-display);color:var(--green-800)">Crop Advisor</h3>
+        <p class="text-muted">Enter soil data and get ML-powered crop recommendations</p>
+      </div>
+    </a>
+    <a href="{{ url_for('history') }}" class="card"
+       style="text-decoration:none;transition:transform .2s"
+       onmouseover="this.style.transform='translateY(-3px)'"
+       onmouseout="this.style.transform=''">
+      <div class="card-body text-center">
+        <div style="font-size:2.5rem">📊</div>
+        <h3 style="margin:.75rem 0 .25rem;font-family:var(--font-display);color:var(--green-800)">History</h3>
+        <p class="text-muted">View all past predictions and input parameters</p>
+      </div>
+    </a>
+    <div class="card" style="cursor:pointer;transition:transform .2s"
+         onclick="fetchWeather()"
+         onmouseover="this.style.transform='translateY(-3px)'"
+         onmouseout="this.style.transform=''">
+      <div class="card-body text-center">
+        <div style="font-size:2.5rem">🌡️</div>
+        <h3 style="margin:.75rem 0 .25rem;font-family:var(--font-display);color:var(--green-800)">Live Weather</h3>
+        <p class="text-muted">Refresh current conditions for your location</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let forecastChart = null;
+
+async function fetchWeather() {
+  // FIX: read location from the input field only — never fall back to a
+  // hardcoded "Hyderabad, India" string baked into the JS template.
+  // If the field is empty, show a prompt rather than silently using a default.
+  const loc = document.getElementById('loc-input').value.trim();
+  if (!loc) {
+    document.getElementById('weather-error').style.display  = 'block';
+    document.getElementById('weather-loading').classList.remove('active');
+    document.getElementById('weather-data').style.display   = 'none';
+    return;
+  }
+
+  document.getElementById('weather-loading').classList.add('active');
+  document.getElementById('weather-data').style.display  = 'none';
+  document.getElementById('weather-error').style.display = 'none';
+
+  try {
+    const res = await fetch('/api/weather', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({location: loc})
+    });
+    const d = await res.json();
+    document.getElementById('weather-loading').classList.remove('active');
+
+    if (d.current && !d.current.error) {
+      const c = d.current;
+      document.getElementById('w-temp').textContent = c.temperature + '°C';
+      document.getElementById('w-city').textContent = c.city + ', ' + c.country;
+      document.getElementById('w-desc').textContent = c.description;
+      document.getElementById('w-hum').textContent  = c.humidity + '%';
+      document.getElementById('w-rain').textContent = c.rainfall + 'mm';
+      document.getElementById('w-wind').textContent = c.wind_speed + 'm/s';
+      document.getElementById('w-icon').src =
+        'https://openweathermap.org/img/wn/' + c.icon + '@2x.png';
+      document.getElementById('weather-data').style.display = 'block';
+      renderForecast(d.forecast || []);
+    } else {
+      document.getElementById('weather-error').style.display = 'block';
+    }
+  } catch (e) {
+    document.getElementById('weather-loading').classList.remove('active');
+    document.getElementById('weather-error').style.display = 'block';
+  }
+}
+
+function renderForecast(forecast) {
+  if (!forecast.length) {
+    document.getElementById('forecast-empty').style.display = 'block';
+    return;
+  }
+  const daily = {};
+  forecast.forEach(f => {
+    const day = f.datetime.split(' ')[0];
+    if (!daily[day]) daily[day] = {temps: [], rain: 0};
+    daily[day].temps.push(f.temperature);
+    daily[day].rain += f.rainfall;
+  });
+  const labels = Object.keys(daily).slice(0, 5).map(
+    d => new Date(d).toLocaleDateString('en', {weekday:'short', month:'short', day:'numeric'})
+  );
+  const temps = Object.values(daily).slice(0, 5).map(
+    d => +(d.temps.reduce((a, b) => a + b, 0) / d.temps.length).toFixed(1)
+  );
+  const rain = Object.values(daily).slice(0, 5).map(d => +d.rain.toFixed(1));
+
+  if (forecastChart) forecastChart.destroy();
+  forecastChart = new Chart(document.getElementById('forecastChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {label: 'Avg Temp (°C)', data: temps, backgroundColor: '#ffa726', borderRadius: 6, yAxisID: 'y'},
+        {label: 'Rainfall (mm)', data: rain,  backgroundColor: '#29b6f6', borderRadius: 6, yAxisID: 'y1'},
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {legend: {position: 'top'}},
+      scales: {
+        y:  {position: 'left',  title: {display: true, text: '°C'}},
+        y1: {position: 'right', title: {display: true, text: 'mm'}, grid: {drawOnChartArea: false}}
+      }
+    }
+  });
+}
+
+async function updateLocation() {
+  const loc = document.getElementById('loc-input').value.trim();
+  if (!loc) return;
+  document.getElementById('loc-status').textContent = 'Saving…';
+  await fetch('/api/profile', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({location: loc})
+  });
+  document.getElementById('loc-status').textContent = '✅ Saved!';
+  setTimeout(() => { document.getElementById('loc-status').textContent = ''; }, 2000);
+  fetchWeather();
+}
+
+// Auto-fetch on page load using whatever location is in the input
+// (populated from user.location in the DB, or blank if not set)
+fetchWeather();
+</script>
+{% endblock %}

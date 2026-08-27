@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Login — Crop Advisor{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">🌾</div>
+      <h1>Welcome Back</h1>
+      <p>Login to your Crop Advisor account</p>
+    </div>
+
+    <!--
+      FIX: autocomplete="off" on the <form> tag tells the browser not to offer
+      to fill the form from saved credentials. Individual inputs also carry
+      explicit autocomplete attributes since some browsers ignore the form-level
+      attribute for specific field types.
+    -->
+    <form method="POST" autocomplete="off">
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input class="form-input" type="email" name="email"
+               placeholder="farmer@example.com"
+               autocomplete="off" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <!--
+          FIX: autocomplete="new-password" is the correct value to suppress
+          browser autofill on password fields — browsers intentionally ignore
+          autocomplete="off" for passwords per the HTML spec.
+        -->
+        <input class="form-input" type="password" name="password"
+               placeholder="••••••••"
+               autocomplete="new-password" required>
+      </div>
+      <button type="submit" class="btn btn-primary"
+              style="width:100%;justify-content:center;margin-top:.5rem">
+        Login →
+      </button>
+    </form>
+
+    <div class="auth-footer">
+      Don't have an account? <a href="{{ url_for('register') }}">Register here</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
